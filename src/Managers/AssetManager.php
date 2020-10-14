@@ -2,7 +2,9 @@
 
 namespace Flint\Managers;
 
+use Flint\Models\Asset;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class AssetManager
 {
@@ -32,12 +34,32 @@ class AssetManager
         return $this;
     }
 
+    public function attachTempFiles($files = [])
+    {
+        foreach ($files as $file) {
+            $filename = pathinfo($file->path, PATHINFO_FILENAME);
+            $asset = new Asset();
+            $asset->filename = $filename;
+            $asset->kind = $file->extension;
+            $asset->size = $file->size;
+            $asset->asset_source_id = $this->source->id;
+
+            if (!$this->folder && $asset->source->folder) {
+                $this->folder($asset->source->folder);
+            }
+            Storage::move($file->path, "{$asset->source->type}/{$this->folder}/{$filename}.{$file->extension}");
+
+            $this->model->assets()->save($asset);
+        }
+    }
+
     public function store(UploadedFile $file)
     {
-        $asset = new \Flint\Models\Asset();
+        $asset = new Asset();
 
-        $asset->filename = pathinfo($file->hashName(), PATHINFO_FILENAME);
-        $asset->original_filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $filename = pathinfo($file->hashName(), PATHINFO_FILENAME);
+
+        $asset->filename = $filename;
         $asset->kind = $file->extension();
         $asset->size = $file->getClientSize();
         $asset->asset_source_id = $this->source->id;
