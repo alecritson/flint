@@ -34,7 +34,7 @@ class AssetManager
         return $this;
     }
 
-    public function attachTempFiles($files = [])
+    public function attachTempFiles($files = [], $copy = false)
     {
         foreach ($files as $file) {
             $filename = pathinfo($file->path, PATHINFO_FILENAME);
@@ -44,10 +44,17 @@ class AssetManager
             $asset->size = $file->size;
             $asset->asset_source_id = $this->source->id;
 
-            if (!$this->folder && $asset->source->folder) {
-                $this->folder($asset->source->folder);
+            $this->folder($asset->source->folder);
+
+            try {
+                if ($copy) {
+                    Storage::copy($file->path, "{$asset->source->type}/{$this->folder}/{$filename}.{$file->extension}");
+                } else {
+                    Storage::move($file->path, "{$asset->source->type}/{$this->folder}/{$filename}.{$file->extension}");
+                }
+            } catch (\League\Flysystem\FileExistsException $e) {
+
             }
-            Storage::move($file->path, "{$asset->source->type}/{$this->folder}/{$filename}.{$file->extension}");
 
             $this->model->assets()->save($asset);
         }
